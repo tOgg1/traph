@@ -1,6 +1,6 @@
 {
   "name": "traph",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "",
   "keywords": [],
   "main": "dist/traph.umd.js",
@@ -49,7 +49,7 @@
     "transform": {
       ".(ts|tsx)": "ts-jest"
     },
-    "testEnvironment": "node",
+    "testEnvironment": "jsdom",
     "testRegex": "(/__tests__/.*|\\.(test|spec))\\.(ts|tsx|js)$",
     "moduleFileExtensions": [
       "ts",
@@ -84,8 +84,11 @@
   "devDependencies": {
     "@commitlint/cli": "^7.1.2",
     "@commitlint/config-conventional": "^7.1.2",
+    "@testing-library/jest-dom": "^4.2.4",
+    "@types/invariant": "^2.2.30",
     "@types/jest": "^23.3.2",
     "@types/node": "^10.11.0",
+    "@types/react": "^16.9.13",
     "colors": "^1.3.2",
     "commitizen": "^3.0.0",
     "coveralls": "^3.0.2",
@@ -98,6 +101,8 @@
     "lodash.camelcase": "^4.3.0",
     "prettier": "^1.14.3",
     "prompt": "^1.0.0",
+    "react": "^16.12.0",
+    "react-dom": "^16.12.0",
     "replace-in-file": "^3.4.2",
     "rimraf": "^2.6.2",
     "rollup": "^0.67.0",
@@ -115,6 +120,11 @@
     "tslint-config-prettier": "^1.15.0",
     "tslint-config-standard": "^8.0.1",
     "typedoc": "^0.12.0",
-    "typescript": "^3.0.3"
+    "typescript": "^3.0.3",
+    "@testing-library/react": "^9.3.2",
+    "@types/react-test-renderer": "^16.9.1"
+  },
+  "peerDependencies": {
+    "react": "^16.0.0"
   }
 }
