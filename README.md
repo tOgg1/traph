@@ -10,6 +10,7 @@ yarn add react-traph
 ## Example
 
 ```tsx
+import React from 'react'
 import graph from 'react-traph'
 import ReactDOM from 'react-dom'
 
