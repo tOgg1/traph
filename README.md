@@ -16,7 +16,7 @@ import ReactDOM from 'react-dom'
 const Store = graph({
   user: {
     firstName: "Tormod",
-    lastName: "Haugland
+    lastName: "Haugland"
   },
   toasts: graph({
     items: [],
