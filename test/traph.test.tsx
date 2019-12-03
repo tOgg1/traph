@@ -162,7 +162,7 @@ describe("graph", () => {
       const [houseAddress, setHouseAddress] = dataGraph.useGraph("user.house.address")
 
       return (
-        <div onClick={setHouseAddress}>
+        <div onClick={() => setHouseAddress("New address")}>
           {houseAddress}
         </div>
       )
@@ -174,7 +174,10 @@ describe("graph", () => {
       </dataGraph.Provider>
     )
 
-    getByText("Storgata 40")
+    const node = getByText("Storgata 40")
+
+    fireEvent.click(node)
+    getByText("New address")
   })
 
   it("allows for member functions of a graph to call updateGraph with new data", () => {
