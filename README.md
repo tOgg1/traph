@@ -40,6 +40,7 @@ function Toast({message}){
 
 
 function ToastContainer(){
+  const [user] = Store.useGraph("user")
   const [toasts] = Store.useGraph("toasts")
 
   return (
