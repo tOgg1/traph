@@ -11,7 +11,7 @@ yarn add react-traph
 
 ```tsx
 import graph from 'react-traph'
-import ReactDOM from 'react-dom
+import ReactDOM from 'react-dom'
 
 const Store = graph({
   user: {
