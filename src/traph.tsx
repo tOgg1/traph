@@ -55,10 +55,13 @@ export function rebindFunction(
  * @param setGraph A context-bound update function which replaces the graph.
  */
 export function rebindGraphFunctions(
-  graph: Record<string, any>, 
+  graph: any,
   updateGraph: (partialGraph: object) => void, 
   setGraph: (newGraph: object) => void
 ){
+  if (!isPlainObject(graph)){
+    return graph
+  }
   return Object.keys(graph).reduce((acc: Record<string, any>, key: string) => {
     const val = graph[key]
     if (!isFunction(val)){
@@ -259,8 +262,7 @@ export default function traph(
 
     useEffect(() => {
       if (props.graphData){
-        setGraphData(merge(
-          {},
+        setGraphData(mergeGraphData(
           graphData,
           props.graphData
         ))
@@ -299,6 +301,10 @@ export default function traph(
     return Providers
   }
 
+  Provider.defaultProps = {
+    deduplicateProviders: true
+  }
+
   function useGraph(selector?: string): UseGraphReturnValue {
     const graphContext = useContext(Context)
 
@@ -311,7 +317,7 @@ export default function traph(
     // We don't necessarily want to call setGraph directly. We will also
     // offer this function, which merges the functionality.
     function updateGraph(subGraph: any){
-      setGraph({...merge(graphData, subGraph)})
+      setGraph(mergeGraphData(graphData, subGraph))
     }
 
 

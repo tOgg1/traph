@@ -41,6 +41,14 @@ describe("graph basic usage", () => {
     traph(undefined)
     traph(null)
   })
+
+  it("Accepts functions as data", () => {
+    function handleSomething(){
+      console.log("Hello")
+    }
+
+    traph(handleSomething)
+  })
 })
   
 describe("graph hook usage", () => {
@@ -70,7 +78,6 @@ describe("graph hook usage", () => {
           {graph.user.firstName} - {graph.user.lastName}
         </div>
       )
-
     }
 
     const { getByText } = render(
@@ -126,6 +133,54 @@ describe("graph hook usage", () => {
     getByText("Thomas")
     getByText("Thomas - Haugland")
   })
+  
+  it('allows updating with scalar values', () => {
+    const Store = traph(true)
+
+    function Component(){
+      const [areWeLive, setAreWeLive] = Store.useGraph()
+
+      return (
+        <div onClick={() => setAreWeLive(!areWeLive)}>
+          {areWeLive ? "We are live" : "We are not live"}
+        </div>
+      )
+    }
+
+    const { getByText } = render(
+      <Store.Provider>
+        <Component />
+      </Store.Provider>
+    )
+
+    const element = getByText("We are live")
+    fireEvent.click(element)
+    getByText("We are not live")
+  })
+
+  it('allows updating with arrays', () => {
+    const Store = traph([1, 2, 3])
+
+    function Component(){
+      const [data, setData] = Store.useGraph()
+
+      return (
+        <div onClick={() => setData([4, 5, 6])}>
+          {data.join(",")}
+        </div>
+      )
+    }
+
+    const { getByText } = render(
+      <Store.Provider>
+        <Component />
+      </Store.Provider>
+    )
+
+    const element = getByText("1,2,3")
+    fireEvent.click(element)
+    getByText("4,5,6")
+  })
 })
 
 describe("advanced usages", () => {
@@ -140,7 +195,7 @@ describe("advanced usages", () => {
           postalCode: "0182",
           postalPlace: "Oslo"
         })
-      })
+     })
     })
 
     function Component(){
