@@ -603,7 +603,7 @@ you cannot really replace a subgraph with other data.
 
 You can however disable the subgraph, by setting the corresponding key to `null`.
 
-```
+```jsx
 const Graph = traph({
   top: "value",
   subgraph: traph({
