@@ -319,7 +319,11 @@ export default function traph(
     // We don't necessarily want to call setGraph directly. We will also
     // offer this function, which merges the functionality.
     function updateGraph(subGraph: any){
+      if (isFunction(subGraph)){
+        setGraph(subGraph)
+      } else {
       setGraph(mergeGraphData(graphData, subGraph))
+    }
     }
 
 
