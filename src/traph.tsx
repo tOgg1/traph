@@ -187,8 +187,8 @@ export function mergeGraphData(
       } else if (graphDataVal === undefined) {
         newArray.push(graphVal)
       } else {
-      newArray.push(mergeGraphData(graphVal, graphDataVal))
-    }
+        newArray.push(mergeGraphData(graphVal, graphDataVal))
+      }
     }
     
     return newArray
@@ -322,10 +322,9 @@ export default function traph(
       if (isFunction(subGraph)){
         setGraph(subGraph)
       } else {
-      setGraph(mergeGraphData(graphData, subGraph))
+        setGraph(mergeGraphData(graphData, subGraph))
+      }
     }
-    }
-
 
     if (!selector){
       // Inject graphData, then resolve substate
@@ -353,8 +352,15 @@ export default function traph(
 
       let property = finalGraph[propertyOnThisLevel]
 
+      if (isFunction(property)){
+        // Bind the property
+        return [
+          rebindFunction(property, graphData, updateGraph, setGraph),
+          (newValue: any) => updateGraph({[selector]: newValue}),
+          setGraph
+        ]
       // If the property is a graph, we recursively call the useGraph hook
-      if (isGraph(property)){
+      } else if (isGraph(property)){
         // We supply the next part of the args chain if it exists
         if (pathSplit.length > 1){
           return property.useGraph(pathSplit.slice(1).join("."))
