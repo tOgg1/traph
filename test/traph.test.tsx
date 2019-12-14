@@ -181,6 +181,36 @@ describe("graph hook usage", () => {
     fireEvent.click(element)
     getByText("4,5,6")
   })
+
+  it('allows updating with nested arrays', () => {
+    const Store = traph({
+      arrayData: [{
+        nested: "value"
+      }]
+})
+
+    function Component(){
+      const [data, setData] = Store.useGraph("arrayData")
+
+      return (
+        <div 
+          onClick={() => setData(data.concat({nested: "anothervalue"}))}
+        >
+          {data.map((value: {nested: string}) => value.nested).join(",")}
+        </div>
+      )
+    }
+
+    const { getByText } = render(
+      <Store.Provider>
+        <Component />
+      </Store.Provider>
+    )
+
+    const element = getByText("value")
+    fireEvent.click(element)
+    expect(getByText("value,anothervalue")).toBeInTheDocument()
+  })
 })
 
 describe("advanced usages", () => {

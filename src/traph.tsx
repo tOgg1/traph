@@ -182,10 +182,13 @@ export function mergeGraphData(
       const graphVal = graph[i]
       const graphDataVal = graphData[i]
 
-      if (graphVal === undefined) return graphDataVal
-      if (graphDataVal === undefined) return graphVal
-
+      if (graphVal === undefined) {
+        newArray.push(graphDataVal)
+      } else if (graphDataVal === undefined) {
+        newArray.push(graphVal)
+      } else {
       newArray.push(mergeGraphData(graphVal, graphDataVal))
+    }
     }
     
     return newArray
