@@ -1,7 +1,7 @@
 import React, { useContext } from 'react'
 import traph, { mergeGraphData } from '../src/traph'
 
-import { render, fireEvent } from '@testing-library/react'
+import { render, fireEvent, wait, getByLabelText, waitForElementToBeRemoved } from '@testing-library/react'
 import '@testing-library/jest-dom/extend-expect'
 import { GraphType } from '../src/types'
 
@@ -187,7 +187,7 @@ describe("graph hook usage", () => {
       arrayData: [{
         nested: "value"
       }]
-})
+    })
 
     function Component(){
       const [data, setData] = Store.useGraph("arrayData")
@@ -285,6 +285,86 @@ describe("advanced usages", () => {
     getByText("User likes: 6")
   })
 
+  it("allows for async member functions of a graph to call updateGraph with new data", async () => {
+    function sleep(ms: number) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    const Graph = traph({
+      toasts: traph({
+        nextId: 0,
+        items: [],
+        async addToast({type, message}: {type: string, message: string}){
+          const nextId = this.nextId + 1
+          this.updateGraph({
+            nextId: nextId,
+            items: this.items.concat({
+              id: nextId,
+              type,
+              message
+            })
+          })
+          await sleep(1000)
+          this.updateGraph((data: {items: [{id: number}]}) => ({
+            ...data,
+            items: data.items.filter((item: {id: number}) => item.id !== nextId)
+          }))
+        }
+      })
+    })
+
+    function Component(){
+      const [toasts] = Graph.useGraph("toasts")
+
+      return (
+        <div 
+          aria-label="toast-container" 
+          onClick={() => {
+            toasts.addToast({type: "success", message: "New message"})
+          }}
+        >
+          {toasts.items.map((toast: {id: number, type: string, message: string}) => (
+            <div aria-label={"Message-" + toast.id}>{toast.message}</div>
+          ))}
+        </div>
+      )
+    }
+
+    const { getByText } = render(
+      <Graph.Provider>
+        <Component />
+      </Graph.Provider>
+    )
+
+    let node = getByLabelText(document.body, "toast-container")
+    fireEvent.click(node)
+    expect(getByLabelText(document.body, "Message-1")).toBeInTheDocument()
+    await waitForElementToBeRemoved(
+      () => getByLabelText(document.body, "Message-1"),
+      {container: document.body}
+    )
+
+    // Try adding two toasts. Both should appear and disappear in the right order
+    // Refetch
+    node = getByLabelText(document.body, "toast-container")
+    fireEvent.click(node)
+    expect(getByLabelText(document.body, "Message-2")).toBeInTheDocument()
+    await sleep(100)
+    fireEvent.click(node)
+    expect(getByLabelText(document.body, "Message-3")).toBeInTheDocument()
+    await waitForElementToBeRemoved(
+      () => getByLabelText(document.body, "Message-2"),
+      {container: document.body}
+    )
+
+    expect(getByLabelText(document.body, "Message-3")).toBeInTheDocument()
+    await waitForElementToBeRemoved(
+      () => getByLabelText(document.body, "Message-3"),
+      {container: document.body}
+    )
+
+  })
+
   it("allows having different contexts with differing values for a graph", () => {
     const subGraph = traph({
       subKey: "subInitialValue"
@@ -318,7 +398,7 @@ describe("advanced usages", () => {
     const overrideNode = getByText("override")
     fireEvent.click(overrideNode)
     // Top level node stays the same
-    getByText("subInitialValue")
+    expect(getByText("subInitialValue")).toBeInTheDocument()
     // New node is different
     getByText("Updated subkey")
     
