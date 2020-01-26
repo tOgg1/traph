@@ -10,6 +10,7 @@ import {
 } from '@testing-library/react'
 import '@testing-library/jest-dom/extend-expect'
 import { GraphType } from '../src/types'
+import { open } from 'inspector'
 
 describe('graph basic usage', () => {
   it('Constructs a data graph successfully', () => {
@@ -601,7 +602,77 @@ describe('advanced usages', () => {
     getByText('Mona is the mother of: John')
   })
 
-  it('should not overwrite subgraphs when "local data" is altered', () => {})
+  it('should not overwrite subgraphs when "local data" is altered', () => {
+    type Item = {
+      name: string
+      price: number
+    }
+
+    const SubStoreOne = traph({
+      items: [],
+      addItem(name: string, price: number) {
+        this.updateGraph({
+          items: this.items.concat({ name, price })
+        })
+      }
+    })
+    const Store = traph({
+      cartOpen: false,
+      subStoreOne: SubStoreOne,
+      subStoreTwo: traph({
+        ticketsBought: 0,
+        buyTicket() {
+          this.updateGraph({ ticketsBought: ++this.ticketsBought })
+        }
+      })
+    })
+
+    function StoreComponent() {
+      const [cartOpen, setCartOpen] = Store.useGraph('cartOpen')
+      return (
+        <div>
+          <div onClick={() => setCartOpen(!cartOpen)}>Open cart</div>
+          {cartOpen && (
+            <div>Cart is here</div>
+          )}
+        </div>
+      )
+    }
+
+    function SubStoreOneView() {
+      const [storeOne] = SubStoreOne.useGraph()
+      return (
+        <div>
+          <div onClick={() => storeOne.addItem('newItem', 5)}>Add another item!</div>
+          <div>
+            {storeOne.items.map((item: Item) => (
+              <div>
+                {item.name}: {item.price},-
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+
+    const { getByText } = render(
+      <Store.Provider>
+        <StoreComponent />
+        <SubStoreOneView />
+      </Store.Provider>
+    )
+
+    const addItem = getByText("Add another item!")
+    fireEvent.click(addItem)
+
+    getByText("newItem: 5,-")
+
+    const openCartItem = getByText("Open cart")
+    fireEvent.click(openCartItem)
+
+    getByText("Cart is here")
+    getByText("newItem: 5,-")
+  })
 })
 
 describe('mergeGraphData', () => {
