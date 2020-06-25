@@ -307,7 +307,9 @@ describe('advanced usages', () => {
           }}
         >
           {toasts.items.map((toast: { id: number; type: string; message: string }) => (
-            <div aria-label={'Message-' + toast.id}>{toast.message}</div>
+            <div key={toast.id} aria-label={'Message-' + toast.id}>
+              {toast.message}
+            </div>
           ))}
         </div>
       )
@@ -632,9 +634,7 @@ describe('advanced usages', () => {
       return (
         <div>
           <div onClick={() => setCartOpen(!cartOpen)}>Open cart</div>
-          {cartOpen && (
-            <div>Cart is here</div>
-          )}
+          {cartOpen && <div>Cart is here</div>}
         </div>
       )
     }
@@ -646,7 +646,7 @@ describe('advanced usages', () => {
           <div onClick={() => storeOne.addItem('newItem', 5)}>Add another item!</div>
           <div>
             {storeOne.items.map((item: Item) => (
-              <div>
+              <div key={item.name}>
                 {item.name}: {item.price},-
               </div>
             ))}
@@ -662,16 +662,16 @@ describe('advanced usages', () => {
       </Store.Provider>
     )
 
-    const addItem = getByText("Add another item!")
+    const addItem = getByText('Add another item!')
     fireEvent.click(addItem)
 
-    getByText("newItem: 5,-")
+    getByText('newItem: 5,-')
 
-    const openCartItem = getByText("Open cart")
+    const openCartItem = getByText('Open cart')
     fireEvent.click(openCartItem)
 
-    getByText("Cart is here")
-    getByText("newItem: 5,-")
+    getByText('Cart is here')
+    getByText('newItem: 5,-')
   })
 })
 
