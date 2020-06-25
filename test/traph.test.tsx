@@ -4,13 +4,10 @@ import traph, { mergeGraphData } from '../src/traph'
 import {
   render,
   fireEvent,
-  wait,
   getByLabelText,
   waitForElementToBeRemoved
 } from '@testing-library/react'
 import '@testing-library/jest-dom/extend-expect'
-import { GraphType } from '../src/types'
-import { open } from 'inspector'
 
 describe('graph basic usage', () => {
   it('Constructs a data graph successfully', () => {
@@ -66,7 +63,11 @@ describe('graph hook usage', () => {
     })
 
     function Component() {
-      const [firstName] = dataGraph.useGraph('user.firstName')
+      const [
+        {
+          user: { firstName }
+        }
+      ] = dataGraph.useGraph()
 
       return <div>{firstName}</div>
     }
@@ -101,9 +102,14 @@ describe('graph hook usage', () => {
     })
 
     function Component() {
-      const [firstName, setFirstName] = dataGraph.useGraph('user.firstName')
+      const [
+        {
+          user: { firstName }
+        },
+        updateGraph
+      ] = dataGraph.useGraph()
 
-      return <div onClick={() => setFirstName('Thomas')}>{firstName}</div>
+      return <div onClick={() => updateGraph({ user: { firstName: 'Thomas' } })}>{firstName}</div>
     }
 
     function OtherComponent() {
@@ -184,10 +190,10 @@ describe('graph hook usage', () => {
     })
 
     function Component() {
-      const [data, setData] = Store.useGraph('arrayData')
+      const [{ arrayData: data }, updateGraph] = Store.useGraph()
 
       return (
-        <div onClick={() => setData(data.concat({ nested: 'anothervalue' }))}>
+        <div onClick={() => updateGraph({ arrayData: data.concat({ nested: 'anothervalue' }) })}>
           {data.map((value: { nested: string }) => value.nested).join(',')}
         </div>
       )
@@ -220,9 +226,20 @@ describe('advanced usages', () => {
     })
 
     function Component() {
-      const [houseAddress, setHouseAddress] = dataGraph.useGraph('user.house.address')
+      const [
+        {
+          user: {
+            house: { address }
+          }
+        },
+        updateGraph
+      ] = dataGraph.useGraph()
 
-      return <div onClick={() => setHouseAddress('New address')}>{houseAddress}</div>
+      return (
+        <div onClick={() => updateGraph({ user: { house: { address: 'New address' } } })}>
+          {address}
+        </div>
+      )
     }
 
     const { getByText } = render(
@@ -252,7 +269,7 @@ describe('advanced usages', () => {
     })
 
     function Component() {
-      const [user] = dataGraph.useGraph('user')
+      const [{ user }] = dataGraph.useGraph()
 
       return <div onClick={() => user.addLike()}>User likes: {user.likes}</div>
     }
@@ -288,7 +305,7 @@ describe('advanced usages', () => {
             })
           })
           await sleep(1000)
-          this.updateGraph((data: { items: [{ id: number }] }) => ({
+          this.updateGraph(data => ({
             ...data,
             items: data.items.filter((item: { id: number }) => item.id !== nextId)
           }))
@@ -297,7 +314,7 @@ describe('advanced usages', () => {
     })
 
     function Component() {
-      const [toasts] = Graph.useGraph('toasts')
+      const [{ toasts }] = Graph.useGraph()
 
       return (
         <div
@@ -357,9 +374,9 @@ describe('advanced usages', () => {
     })
 
     function Component() {
-      const [subKey, setSubkey] = dataGraph.useGraph('subGraph.subKey')
+      const [{ subKey }, updateGraph] = subGraph.useGraph()
 
-      return <div onClick={() => setSubkey('Updated subkey')}>{subKey}</div>
+      return <div onClick={() => updateGraph({ subKey: 'Updated subkey' })}>{subKey}</div>
     }
 
     const { getByText } = render(
@@ -556,33 +573,29 @@ describe('advanced usages', () => {
 
     function PaulComponent() {
       // Alternatively Paul.useGraph()
-      const [paul, setPaul] = People.useGraph('paul')
+      const [{ paul }] = People.useGraph()
 
-      return (
-        <div>
-          Paul is the father of: {paul.children.map((child: Person) => child.name).join(', ')}
-        </div>
-      )
+      return <div>Paul is the father of: {paul.children.map(child => child.name).join(', ')}</div>
     }
 
     function MonaComponent() {
       // Alternatively Mona.useGraph()
-      const [mona, setMona] = People.useGraph('mona')
+      const [{ mona }] = People.useGraph()
 
       const context = useContext(Mark.Context)
 
-      return (
-        <div>
-          Mona is the mother of: {mona.children.map((child: Person) => child.name).join(', ')}
-        </div>
-      )
+      return <div>Mona is the mother of: {mona.children.map(child => child.name).join(', ')}</div>
     }
 
     function MarkComponent() {
       // Alternatively Mark.useGraph()
-      const [mark, setMark] = People.useGraph('mark')
+      const [{ mark }, updateGraph] = People.useGraph()
 
-      return <div onClick={() => setMark({ name: 'John' })}>Click me to change Mark's name!</div>
+      return (
+        <div onClick={() => updateGraph({ mark: { name: 'John' } })}>
+          Click me to change Mark's name!
+        </div>
+      )
     }
 
     const { getByText } = render(
@@ -611,7 +624,7 @@ describe('advanced usages', () => {
     }
 
     const SubStoreOne = traph({
-      items: [],
+      items: [] as { name: string; price: number }[],
       addItem(name: string, price: number) {
         this.updateGraph({
           items: this.items.concat({ name, price })
@@ -630,10 +643,10 @@ describe('advanced usages', () => {
     })
 
     function StoreComponent() {
-      const [cartOpen, setCartOpen] = Store.useGraph('cartOpen')
+      const [{ cartOpen }, updateGraph] = Store.useGraph()
       return (
         <div>
-          <div onClick={() => setCartOpen(!cartOpen)}>Open cart</div>
+          <div onClick={() => updateGraph({ cartOpen: !cartOpen })}>Open cart</div>
           {cartOpen && <div>Cart is here</div>}
         </div>
       )
@@ -645,7 +658,7 @@ describe('advanced usages', () => {
         <div>
           <div onClick={() => storeOne.addItem('newItem', 5)}>Add another item!</div>
           <div>
-            {storeOne.items.map((item: Item) => (
+            {storeOne.items.map(item => (
               <div key={item.name}>
                 {item.name}: {item.price},-
               </div>
