@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react'
+import React, { useContext, useState, useEffect, useRef } from 'react'
 import isString from 'lodash/isString'
 import isObject from 'lodash/isObject'
 import isFunction from 'lodash/isFunction'
@@ -7,15 +7,23 @@ import isArray from 'lodash/isArray'
 import isNumber from 'lodash/isNumber'
 import union from 'lodash/union'
 import uniqueId from 'lodash/uniqueId'
-import get from 'lodash/get'
-import set from 'lodash/set'
-import { GraphContextType, GraphType, ProviderProps, UseGraphReturnValue } from './types'
+import {
+  RecursiveGraphData,
+  RecursiveGraphDataPartial,
+  GraphContextType,
+  GraphType,
+  ProviderProps,
+  UseGraphReturnValue,
+  BoundGraphFunctionType,
+  UpdateGraphFunctionType
+} from './types'
+import { isEqual } from 'lodash'
 
-export function isGraph(graph: GraphType): graph is GraphType {
+export function isGraph<T>(graph: any): graph is GraphType<T> {
   return graph && graph.__isGraph
 }
 
-export function useDefaultStatePopulator(values: any) {
+export function useDefaultStatePopulator<T>(values: T) {
   return useState(values)
 }
 
@@ -28,11 +36,11 @@ export function useDefaultStatePopulator(values: any) {
  * @param updateGraph A context-bound update function which updates the graph by doing a deep merge.
  * @param setGraph A context-bound update function which replaces the graph.
  */
-export function rebindFunction(
-  func: (args?: any) => any,
-  graph: object,
-  updateGraph: (partialGraph: object) => void,
-  setGraph: (newGraph: object) => void
+export function rebindFunction<T>(
+  func: (args?: any) => void,
+  graph: T,
+  updateGraph: UpdateGraphFunctionType<T>,
+  setGraph: (newGraph: T) => void
 ) {
   return func.bind({
     ...graph,
@@ -48,16 +56,16 @@ export function rebindFunction(
  * @param updateGraph A context-bound update function which updates the graph by doing a deep merge.
  * @param setGraph A context-bound update function which replaces the graph.
  */
-export function rebindGraphFunctions(
-  graph: any,
-  updateGraph: (partialGraph: object) => void,
-  setGraph: (newGraph: object) => void
+export function rebindGraphFunctions<T>(
+  graph: T,
+  updateGraph: UpdateGraphFunctionType<T>,
+  setGraph: (newGraph: T) => void
 ) {
   if (!isPlainObject(graph)) {
     return graph
   }
   return Object.keys(graph).reduce((acc: Record<string, any>, key: string) => {
-    const val = graph[key]
+    const val = graph[key as keyof T]
     if (!isFunction(val)) {
       acc[key] = val
       return acc
@@ -74,9 +82,9 @@ export function rebindGraphFunctions(
  * @param graph The current graph data
  * @param path Subpath specification to resolve
  */
-export function resolveSubgraphs(graph: any): any {
+export function resolveSubgraphs<T>(graph: T): T {
   if (isGraph(graph)) {
-    return null
+    return graph
   } else if (isPlainObject(graph)) {
     return Object.entries(graph).reduce((acc: Record<string, any>, [key, value]: [string, any]) => {
       if (isGraph(value)) {
@@ -88,7 +96,7 @@ export function resolveSubgraphs(graph: any): any {
         acc[key] = value
       }
       return acc
-    }, {})
+    }, {}) as T
   } else if (isArray(graph)) {
     const _new = graph.map(data => {
       if (isGraph(data)) {
@@ -99,7 +107,7 @@ export function resolveSubgraphs(graph: any): any {
       }
       return data
     })
-    return _new
+    return _new as any
   } else {
     return graph
   }
@@ -141,7 +149,7 @@ export function resolveSubGraphsData(graphData: any): any {
   }
 }
 
-export function mergeGraphData(graph: any, graphData: any): any {
+export function mergeGraphData<T>(graph: T, graphData: any): T {
   // The only thing we really care about and need to inject, is the non-graph values
   // The nested graph values will be taken care of by sending them into the subproviders, and hence
   // Does not need to be handled here.
@@ -162,7 +170,7 @@ export function mergeGraphData(graph: any, graphData: any): any {
     // For mismatching types, we assume that the end-users knows what they are doing, and
     // has overwritten nested graph-data.
     if (!isArray(graph)) {
-      return graphData
+      return graphData as any
     }
 
     const longestArray = Math.max(graphData.length, graph.length)
@@ -181,17 +189,17 @@ export function mergeGraphData(graph: any, graphData: any): any {
       }
     }
 
-    return newArray
+    return newArray as any
   } else if (isPlainObject(graphData)) {
     // For mismatching types, we assume that the end-users knows what they are doing, and
     // has overwritten nested graph-data.
-    if (!isPlainObject(graph)) return graphData
+    if (!isPlainObject(graph)) return graphData as any
 
     const graphKeys = Object.keys(graph)
     const graphDataKeys = Object.keys(graphData)
-    const allKeys = union(graphKeys, graphDataKeys)
+    const allKeys = union(graphKeys, graphDataKeys) as (keyof T)[]
 
-    return allKeys.reduce((newGraph: Record<string, any>, key) => {
+    return allKeys.reduce((newGraph: Partial<T>, key: keyof T) => {
       const graphVal = graph[key]
       const graphDataVal = graphData[key]
 
@@ -203,7 +211,7 @@ export function mergeGraphData(graph: any, graphData: any): any {
         newGraph[key] = mergeGraphData(graphVal, graphDataVal)
       }
       return newGraph
-    }, {})
+    }, {}) as T
   } else {
     // We have some edge cases, like boolean values. Here we simply accept graphData
     return graphData
@@ -214,10 +222,10 @@ export function mergeGraphData(graph: any, graphData: any): any {
 //
 // The method also returns all the keys associated with the subgraphs. This may
 // be array indices or object keys
-export function getSubgraphs(
-  graph: any,
+export function getSubgraphs<T>(
+  graph: T,
   ignoreSubGraphs?: string[]
-): [number | string, GraphType][] {
+): [number | string, GraphType<T>][] {
   const overloadedIgnoreSubGraphs = ignoreSubGraphs || []
   if (isObject(graph)) {
     return Object.entries(graph).filter(
@@ -238,19 +246,29 @@ export function getSubgraphs(
  * @param initialGraph Initial data
  * @param statePopulator An initial hook to populate used to populate the state.
  */
-export default function traph(initialGraph: any, statePopulator?: (values: any) => any): GraphType {
-  const Context = React.createContext<GraphContextType | null>(null)
+export default function traph<T>(
+  initialGraph: {
+    [P in keyof T]: T[P] extends (...args: any[]) => any
+      ? (this: BoundGraphFunctionType<T>, ...args: Parameters<T[P]>) => void
+      : T[P]
+  },
+  statePopulator?: (initialData: any) => any
+): GraphType<T> {
+  const Context = React.createContext<GraphContextType<T> | null>(null)
 
   const useHook = statePopulator || useDefaultStatePopulator
-  const initialGraphData = resolveSubGraphsData(initialGraph)
+  const initialGraphData: RecursiveGraphData<T> = resolveSubGraphsData(initialGraph)
 
-  function Provider(props: ProviderProps) {
+  function Provider(props: ProviderProps<T>) {
+    const prevProps = useRef<RecursiveGraphDataPartial<T> | undefined>(undefined)
     const [graphData, setGraphData] = useHook(initialGraphData)
 
     useEffect(() => {
-      if (props.graphData) {
-        setGraphData(mergeGraphData(graphData, props.graphData))
-      }
+      if (isEqual(prevProps.current, props.graphData)) return
+      prevProps.current = props.graphData
+
+      if (props.graphData) setGraphData(mergeGraphData(graphData, props.graphData))
+      // eslint-disable-next-line
     }, [props])
 
     // Iterate all children, and find the ones that are graphs.
@@ -263,7 +281,7 @@ export default function traph(initialGraph: any, statePopulator?: (values: any) 
     // folds (reduces) them into each other to create a hierarchy.
     //
     // Note that the updater function actually just updates the
-    const Providers = [<Context.Provider value={[initialGraph, graphData, setGraphData]} />]
+    const Providers = [<Context.Provider value={[initialGraph as T, graphData, setGraphData]} />]
       .concat(
         subGraphs.map(([key, subGraph]) => {
           const overridenGraphData = graphData[key]
@@ -291,7 +309,7 @@ export default function traph(initialGraph: any, statePopulator?: (values: any) 
     deduplicateProviders: true
   }
 
-  function useGraph(selector?: string): UseGraphReturnValue {
+  function useGraph(): UseGraphReturnValue<T> {
     const graphContext = useContext(Context)
 
     if (graphContext === null) {
@@ -302,7 +320,7 @@ export default function traph(initialGraph: any, statePopulator?: (values: any) 
 
     // We don't necessarily want to call setGraph directly. We will also
     // offer this function, which merges the functionality.
-    function updateGraph(subGraph: any) {
+    const updateGraph: UpdateGraphFunctionType<T> = subGraph => {
       if (isFunction(subGraph)) {
         setGraph(subGraph)
       } else {
@@ -310,65 +328,13 @@ export default function traph(initialGraph: any, statePopulator?: (values: any) 
       }
     }
 
-    if (!selector) {
-      // Inject graphData, then resolve substate
-      const injectedGraph = resolveSubgraphs(mergeGraphData(graph, graphData))
+    // Inject graphData, then resolve substate
+    const injectedGraph = resolveSubgraphs(mergeGraphData(graph, graphData))
 
-      // Rebind functions
-      const finalGraph = rebindGraphFunctions(injectedGraph, updateGraph, setGraph)
+    // Rebind functions
+    const finalGraph = rebindGraphFunctions(injectedGraph, updateGraph, setGraph)
 
-      return [finalGraph, updateGraph, setGraph]
-    } else {
-      const pathSplit = selector.split('.')
-      const propertyOnThisLevel = pathSplit[0]
-
-      // Await binding functions and resolving subgraphs, as we might have to recurse here.
-      // Do merge in graphData, however
-      const finalGraph = mergeGraphData(graph, graphData)
-
-      if (!finalGraph.hasOwnProperty(propertyOnThisLevel)) {
-        return [null, (newValue: any) => updateGraph(newValue), setGraph]
-      }
-
-      let property = finalGraph[propertyOnThisLevel]
-
-      if (isFunction(property)) {
-        // Bind the property
-        return [
-          rebindFunction(property, graphData, updateGraph, setGraph),
-          (newValue: any) => updateGraph({ [selector]: newValue }),
-          setGraph
-        ]
-        // If the property is a graph, we recursively call the useGraph hook
-      } else if (isGraph(property)) {
-        // We supply the next part of the args chain if it exists
-        if (pathSplit.length > 1) {
-          return property.useGraph(pathSplit.slice(1).join('.'))
-        } else {
-          return property.useGraph()
-        }
-      } else if (pathSplit.length > 1) {
-        // If our selector is some sort of nested selector (and we are not dealing with a graph), we try to use
-        // lodash.get on it. Note that we need to be slightly clever when updating
-        // the state in this scenario, to ensure we only updated the picked value.
-        // Fortunately, lodash supplies the main bulk of required cleverness with lodash.set.
-
-        property = get(property, pathSplit.slice(1).join('.'))
-
-        return [
-          property,
-          (newValue: any) => {
-            const updatedGraph = set(finalGraph, pathSplit, newValue)
-            setGraph({
-              ...updatedGraph
-            })
-          },
-          setGraph
-        ]
-      }
-
-      return [property, (newValue: any) => updateGraph({ [selector]: newValue }), setGraph]
-    }
+    return [finalGraph as RecursiveGraphData<T>, updateGraph, setGraph]
   }
 
   return {
@@ -376,7 +342,7 @@ export default function traph(initialGraph: any, statePopulator?: (values: any) 
     Provider,
     useGraph,
     Context,
-    initialGraph,
+    initialGraph: initialGraph as T,
     __isGraph: true
   }
 }
